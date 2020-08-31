@@ -9,8 +9,11 @@ import mlda
 
 def main():
     data = []
-    data.append( np.loadtxt( "histogram_v.txt" , dtype=np.int32) )
-    data.append( np.loadtxt( "histogram_w.txt" , dtype=np.int32)*5 )
+    data.append( np.loadtxt( "histogram_v.txt" , dtype=np.int32)*100 )
+    data.append( np.loadtxt( "histogram_w.txt" , dtype=np.int32)*100 )
+    
+    print(data[0].shape, data[1].shape)
+    return
     
     start = time.clock()
     mldapy.mlda( data, 3, 100, "learn_result" )

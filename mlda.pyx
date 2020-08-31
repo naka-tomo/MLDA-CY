@@ -5,24 +5,28 @@ import math
 import pylab
 import pickle
 import os
+import cython
+from libc.stdlib cimport rand, RAND_MAX
 
 # ハイパーパラメータ
 cdef double __alpha = 1.0
 cdef double __beta = 1.0
 
-
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cdef calc_lda_param( docs_mdn, topics_mdn, K, dims ):
-    M = len(docs_mdn)
-    D = len(docs_mdn[0])
+    cdef int M = len(docs_mdn)
+    cdef int D = len(docs_mdn[0])
+    cdef int d, z, m, n, w, N
 
     # 各物体dにおいてトピックzが発生した回数
-    n_dz = np.zeros((D,K), dtype=np.int32 )
+    cdef int [:,:] n_dz = np.zeros((D,K), dtype=np.int32 )
 
     # 各トピックzにぴおいて特徴wが発生した回数
-    n_mzw = np.zeros((M,K,np.max(dims)), dtype=np.int32)
+    cdef int [:,:,:] n_mzw = np.zeros((M,K,np.max(dims)), dtype=np.int32)
 
     # 各トピックが発生した回数
-    n_mz = np.zeros((M,K), dtype=np.int32)
+    cdef int [:,:] n_mz = np.zeros((M,K), dtype=np.int32)
 
     # 数え上げる
     for d in range(D):
@@ -41,6 +45,10 @@ cdef calc_lda_param( docs_mdn, topics_mdn, K, dims ):
 
 
 cdef double[:] __P = np.zeros( 100 )
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True) 
 cdef sample_topic( int d, int w, int[:,:] n_dz, int[:,:] n_zw, int[:] n_z, int K, int V ):
     cdef int z
 
@@ -52,7 +60,7 @@ cdef sample_topic( int d, int w, int[:,:] n_dz, int[:,:] n_zw, int[:] n_z, int K
         __P[z] = __P[z] + __P[z-1]
 
     # サンプリング
-    cdef double rnd = __P[K-1] * random.random()
+    cdef double rnd = __P[K-1] * rand()/float(RAND_MAX)
     for z in range(K):
         if __P[z] >= rnd:
             return z
@@ -67,10 +75,11 @@ def conv_to_word_list( data ):
             doc.append(v)
     return doc
 
-
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cdef calc_liklihood( int[:,:] data, int[:,:] n_dz, int[:,:] n_zw, int[:] n_z, int D, int K, int V  ):
     cdef double lik = 0.0
-    cdef s = 0.0
+    cdef double s = 0.0
     cdef double cons
     cdef int d, w, z
     
@@ -119,6 +128,8 @@ def load_model( load_dir ):
     return a,b
 
 # ldaメイン
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cpdef mlda( data, int K, int num_itr=100, save_dir="model", load_dir=None ):
     cdef int M, it, d, m, N, n, w, z
     cdef int[:,:] n_dz, n_mz
